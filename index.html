@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>voice</title>
+	<link rel="icon" href="favicon.ico" type="image/x-icon"/>
+	<link rel="shortcut icon" href="favicon.ico" type="image/x-icon"/>
+        <script src="dist/RTCMultiConnection.min.js"></script>
+        <script src="dist/getHTMLMediaElement.js"></script>
+        <script src="dist/socket.io.js"></script>
+    </head>
+    <body>
+        <div id="audios-container" style="display: none;"></div>
+        <script>
+        	let connection = new RTCMultiConnection();
+			let mystream = null;
+			let pressingpushtotalk = false;
+
+			connection.socketURL = "https://rtcmulticonnection.herokuapp.com:443/";
+			//connection.socketURL = "https://rtccaliforniarp.herokuapp.com:443/";
+			
+			
+			connection.socketMessageEvent = 'voice';
+			connection.leaveOnPageUnload = false;
+
+			connection.session = {
+				audio: true,
+				video: false
+			};
+
+			connection.mediaConstraints = {
+				audio: true,
+				video: false
+			};
+
+			connection.sdpConstraints.mandatory = {
+				OfferToReceiveAudio: true,
+				OfferToReceiveVideo: false
+			};
+
+			connection.extra = {
+				idOfUser: "",
+				room: ""
+			}
+
+			connection.onmute = function ( event ) {
+			}
+
+			connection.onunmute = function ( event ) {
+			}
+
+			function setVolume(playerid, pVolume){
+			    var playerAudio = document.getElementById(playerid);
+			    playerAudio.volume = pVolume;
+			}
+
+			function mutePlayer(playerid, action){
+			    var playerAudio = document.getElementById(playerid);
+			    playerAudio.muted = action;
+			}
+
+			connection.onleave = function(event) {
+			    if (event.userid === connection.sessionid) {
+				mp.trigger("reloadBrowser");
+			    }
+			};
+
+			connection.onstreamended = function(event) {
+				// Desconectou
+				var playerAudio = document.getElementById("userid_" + event.extra.idOfUser);
+				playerAudio.remove();
+			};
+
+			var audiosContainer = document.getElementById('audios-container');
+
+			connection.onstream = function ( event ) {
+				event.mediaElement.id = "userid_" + event.extra.idOfUser;
+				audiosContainer.append(event.mediaElement);
+				 event.mediaElement.muted = true;
+				
+				if ( event.type == "local" ) {
+					mystream = event.stream;
+					event.stream.mute( "audio" );
+				}
+			};
+
+			function joinRoom( idOfUser, room ) {
+					if ( connection.extra.room == "" ){
+					connection.extra.room = room;
+					connection.openOrJoin( room );
+					mp.trigger("contVoip");
+				}
+				if ( connection.extra.idOfUser == "" ){
+					connection.extra.idOfUser = idOfUser;
+				}
+				connection = true;
+			}
+
+			function pressDown() {
+				if ( !pressingpushtotalk ) {
+					if ( mystream != null ) {
+						pressingpushtotalk = true;
+						mystream.unmute( "audio" );
+					}
+				}
+			};
+
+			function pressUp() {
+				if ( pressingpushtotalk ) {
+					if ( mystream != null ) { 
+						pressingpushtotalk = false;
+						mystream.mute( "audio" );
+					}
+				}
+			};
+		</script>
+    </body>
+</html>
